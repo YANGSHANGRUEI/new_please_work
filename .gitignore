@@ -1,2 +1,4 @@
 apikey
 .streamlit/secrets.toml
+.venv
+.vscode
