@@ -20,18 +20,30 @@ def _get_supabase_config():
     except Exception:
         st = None
 
+    def normalize(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1].strip()
+            return value
+        return str(value)
+
     def read_secret(name: str):
-        value = None
-        if st is not None:
-            try:
-                value = st.secrets.get(name)
-            except Exception:
-                value = None
-        return value
+        if st is None:
+            return None
+        try:
+            value = st.secrets.get(name)
+        except Exception:
+            value = None
+        return normalize(value)
 
     def read_value(*names):
         for name in names:
-            value = os.getenv(name)
+            value = normalize(os.getenv(name))
             if value:
                 return value
             value = read_secret(name)
@@ -93,14 +105,31 @@ def _load_from_supabase():
 
     questions: dict[str, dict[str, Any]] = {}
     for row in rows:
-        if not all(key_name in row for key_name in ("field", "subject", "teacher", "year")):
+        field = row.get("field") or row.get("Field") or row.get("law_field") or row.get("category") or ""
+        subject = row.get("subject") or row.get("Subject") or row.get("law_subject") or ""
+        teacher = row.get("teacher") or row.get("Teacher") or row.get("law_teacher") or ""
+        year = row.get("year") or row.get("Year") or row.get("academic_year") or row.get("exam_year") or ""
+        if not (field and subject and teacher and year):
             continue
-        combo = combo_key(row["field"], row["subject"], row["teacher"], row["year"])
+        combo = combo_key(field, subject, teacher, year)
         questions[combo] = {
-            "question_text": row.get("question_text") or row.get("question") or row.get("title") or "",
-            "question_link": row.get("question_link") or row.get("link") or row.get("url") or row.get("question_url") or "",
-            "upload_time": row.get("upload_time") or "",
-            "uploader_id": row.get("uploader_id") or "",
+            "question_text": (
+                row.get("question_text")
+                or row.get("question")
+                or row.get("title")
+                or row.get("questionTitle")
+                or ""
+            ),
+            "question_link": (
+                row.get("question_link")
+                or row.get("link")
+                or row.get("url")
+                or row.get("question_url")
+                or row.get("questionLink")
+                or ""
+            ),
+            "upload_time": row.get("upload_time") or row.get("created_at") or "",
+            "uploader_id": row.get("uploader_id") or row.get("created_by") or "",
         }
     return questions, None
 
