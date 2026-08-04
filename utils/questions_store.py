@@ -108,9 +108,28 @@ def _load_from_supabase():
         field = row.get("field") or row.get("Field") or row.get("law_field") or row.get("category") or ""
         subject = row.get("subject") or row.get("Subject") or row.get("law_subject") or ""
         teacher = row.get("teacher") or row.get("Teacher") or row.get("law_teacher") or ""
-        year = row.get("year") or row.get("Year") or row.get("academic_year") or row.get("exam_year") or ""
+        year = (
+            row.get("year")
+            or row.get("Year")
+            or row.get("academic_year")
+            or row.get("exam_year")
+            or ""
+        )
+        semester = row.get("semester") or row.get("Semester") or row.get("term") or ""
+        time_value = row.get("time") or row.get("Time") or row.get("exam_period") or row.get("period") or ""
+
         if not (field and subject and teacher and year):
             continue
+
+        # 兼容你現在的欄位結構：year + semester + time 會被組合成網站所需的 year 值
+        if semester or time_value:
+            if year and semester and time_value:
+                year = f"{year}-{semester}-{time_value}"
+            elif year and semester:
+                year = f"{year}-{semester}"
+            elif year and time_value:
+                year = f"{year}-{time_value}"
+
         combo = combo_key(field, subject, teacher, year)
         questions[combo] = {
             "question_text": (
