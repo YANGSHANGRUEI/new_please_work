@@ -139,7 +139,7 @@ def _load_from_supabase():
         if not base_url.endswith("/rest/v1"):
             base_url = f"{base_url}/rest/v1"
         response = requests.get(
-            f"{base_url}/{table}?select=field,subject,teacher,year,question_text,question_link,upload_time,uploader_id",
+            f"{base_url}/{table}?select=*",
             headers=headers,
             timeout=10,
         )

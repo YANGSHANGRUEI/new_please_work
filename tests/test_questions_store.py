@@ -3,8 +3,9 @@ import os
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+import utils.questions_store as questions_store
 from utils.questions_store import combo_key, _get_supabase_config
 
 
@@ -33,6 +34,28 @@ class QuestionsStoreTests(unittest.TestCase):
         self.assertIn("supabase.co", url)
         self.assertTrue(key.startswith("sb_"))
         self.assertEqual(table, "subject_and_url")
+
+    def test_queries_supabase_with_wildcard_columns(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = [
+            {
+                "field": "民法",
+                "subject": "債法",
+                "teacher": "王老師",
+                "year": "112-1",
+                "question": "請問這是什麼？",
+                "url": "https://example.com/q1",
+            }
+        ]
+
+        with patch("utils.questions_store._get_supabase_config", return_value=("https://example.supabase.co", "test-key", "subject_and_url")), patch("utils.questions_store.requests.get", return_value=response) as mock_get:
+            questions, error = questions_store._load_from_supabase()
+
+        self.assertIsNone(error)
+        self.assertIn("民法::債法::王老師::112-1", questions)
+        self.assertEqual(questions["民法::債法::王老師::112-1"]["question_text"], "請問這是什麼？")
+        self.assertIn("select=*", mock_get.call_args.args[0])
 
 
 if __name__ == "__main__":
