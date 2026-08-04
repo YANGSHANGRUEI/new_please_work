@@ -1,7 +1,47 @@
 from openai import OpenAI
 import json
 import math
+import os
+import re
+from pathlib import Path
 from typing import Optional
+
+
+def resolve_openai_api_key(api_key: Optional[str] = None) -> Optional[str]:
+    """Resolve OpenAI credentials from explicit arg, env vars, Streamlit secrets, or local files."""
+    if api_key:
+        return str(api_key)
+
+    for env_name in ("OPENAI_API_KEY", "OPENAI_ADMIN_KEY"):
+        value = os.getenv(env_name)
+        if value:
+            return str(value)
+
+    try:
+        import streamlit as st
+    except Exception:
+        st = None
+
+    if st is not None:
+        for secret_name in ("OPENAI_API_KEY", "OPENAI_ADMIN_KEY"):
+            value = st.secrets.get(secret_name)
+            if value:
+                return str(value)
+
+    repo_root = Path(__file__).resolve().parent.parent
+    for path in [repo_root / ".streamlit" / "secrets.toml", repo_root / "apikey"]:
+        if not path.exists():
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for key_name in ("OPENAI_API_KEY", "OPENAI_ADMIN_KEY"):
+            match = re.search(rf'^{key_name}\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+            if match:
+                return match.group(1).strip()
+
+    return None
 
 
 def check_safe(text: str, api_key: Optional[str] = None) -> dict:
@@ -12,7 +52,10 @@ def check_safe(text: str, api_key: Optional[str] = None) -> dict:
       - {'error': '...'} on failure
     """
     try:
-        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        resolved_key = resolve_openai_api_key(api_key)
+        if not resolved_key:
+            return {"error": "Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable."}
+        client = OpenAI(api_key=resolved_key)
         resp = client.moderations.create(model="omni-moderation-latest", input=text)
 
         # resp may be a dict-like or an object with attributes depending on client
@@ -74,7 +117,10 @@ def check_relevance(text: str, api_key: Optional[str] = None) -> dict:
         " 並且不要多餘的文字。\n\n輸入文字：\n"
     )
     try:
-        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        resolved_key = resolve_openai_api_key(api_key)
+        if not resolved_key:
+            return {"error": "Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable."}
+        client = OpenAI(api_key=resolved_key)
         resp = client.responses.create(model="gpt-4o-mini", input=prompt + text, temperature=0)
 
         # extract text robustly
@@ -138,7 +184,10 @@ def check_ai_generated(text: str, api_key: Optional[str] = None) -> dict:
         "\n\n輸入文字：\n"
     )
     try:
-        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        resolved_key = resolve_openai_api_key(api_key)
+        if not resolved_key:
+            return {"error": "Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable."}
+        client = OpenAI(api_key=resolved_key)
         resp = client.responses.create(model="gpt-4o-mini", input=prompt + text, temperature=0)
 
         out = None
@@ -190,7 +239,10 @@ def check_ai_generated(text: str, api_key: Optional[str] = None) -> dict:
 def get_embedding(text: str, api_key: Optional[str] = None) -> dict:
     """Return embedding vector for `text` using OpenAI embeddings API."""
     try:
-        client = OpenAI(api_key=api_key) if api_key else OpenAI()
+        resolved_key = resolve_openai_api_key(api_key)
+        if not resolved_key:
+            return {"error": "Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable."}
+        client = OpenAI(api_key=resolved_key)
         resp = client.embeddings.create(model="text-embedding-3-small", input=text)
         # resp.data is usually a list with one item containing embedding
         emb = None

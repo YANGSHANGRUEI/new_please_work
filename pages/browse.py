@@ -161,7 +161,10 @@ question = get_question(
     field_filter, subject_filter, teacher_filter, year_value
 )
 if question:
-    st.markdown(question["question_text"])
+    if question.get("question_text"):
+        st.markdown(question["question_text"])
+    if question.get("question_link"):
+        st.link_button("開啟題目連結", question["question_link"])
 else:
     st.caption("此分類尚無題目")
 

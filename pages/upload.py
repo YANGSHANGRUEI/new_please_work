@@ -34,6 +34,7 @@ from utils.user_store import add_tokens
 from utils.openai_client import check_ai_generated
 from utils.openai_client import find_embedding_duplicate
 from utils.openai_client import check_relevance
+from utils.openai_client import resolve_openai_api_key
 
 st.title("上傳作答")
 
@@ -101,7 +102,8 @@ if st.button("提交"):
     elif char_count < MIN_ANSWER_CHARS:
         st.warning(f"作答至少 {MIN_ANSWER_HINT}，目前只有 {char_count} 字")
     else:
-        relevance = check_relevance(normalized_answer, api_key=st.secrets.get("OPENAI_API_KEY"))
+        openai_api_key = resolve_openai_api_key()
+        relevance = check_relevance(normalized_answer, api_key=openai_api_key)
         if "error" in relevance:
             st.error(f"內容判定失敗：{relevance['error']}")
             st.stop()
@@ -109,7 +111,7 @@ if st.button("提交"):
             st.warning(f"{base_warning}（原因：無關內容）")
             st.stop()
 
-        ai_generated = check_ai_generated(normalized_answer, api_key=st.secrets.get("OPENAI_API_KEY"))
+        ai_generated = check_ai_generated(normalized_answer, api_key=openai_api_key)
         if "error" in ai_generated:
             st.error(f"AI 生成判定失敗：{ai_generated['error']}")
             st.stop()
@@ -120,7 +122,7 @@ if st.button("提交"):
         existing = load_answers()
 
         # 使用 embeddings 與現有答案比對，以偵測貼上或幾乎相同的內容
-        emb_dup = find_embedding_duplicate(normalized_answer, existing, api_key=st.secrets.get("OPENAI_API_KEY"), threshold=0.92)
+        emb_dup = find_embedding_duplicate(normalized_answer, existing, api_key=openai_api_key, threshold=0.92)
         if isinstance(emb_dup, dict) and emb_dup.get("error"):
             # 審查非關鍵錯誤，僅記 log 並繼續
             st.caption(f"(注意) 嵌入比對失敗：{emb_dup['error']}")
