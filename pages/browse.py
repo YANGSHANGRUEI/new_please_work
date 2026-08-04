@@ -163,6 +163,7 @@ question = questions.get(
 )
 if status_error:
     st.warning(status_error)
+    st.caption("請確認 Supabase 的 URL、anon key、table 名稱，以及表格欄位是否正確。")
 if question:
     if question.get("question_text"):
         st.markdown(question["question_text"])

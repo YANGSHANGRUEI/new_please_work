@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -14,11 +15,54 @@ def combo_key(field: str, subject: str, teacher: str, year: str) -> str:
     return f"{field}::{subject}::{teacher}::{year}"
 
 
+def _parse_simple_toml(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+
+    values: dict[str, str] = {}
+    try:
+        content = path.read_text(encoding="utf-8")
+    except Exception:
+        return {}
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            continue
+        if value.startswith(('"', "'")) and value.endswith(('"', "'")) and len(value) >= 2:
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+
+def _get_local_secrets() -> dict[str, str]:
+    candidates = [
+        Path.cwd() / ".streamlit" / "secrets.toml",
+        Path.cwd() / "secrets.toml",
+        Path(__file__).resolve().parents[1] / ".streamlit" / "secrets.toml",
+        Path(__file__).resolve().parents[1] / "secrets.toml",
+    ]
+    for candidate in candidates:
+        data = _parse_simple_toml(candidate)
+        if data:
+            return data
+    return {}
+
+
 def _get_supabase_config():
     try:
         import streamlit as st
     except Exception:
         st = None
+
+    local_secrets = _get_local_secrets()
 
     def normalize(value):
         if value is None:
@@ -33,12 +77,14 @@ def _get_supabase_config():
         return str(value)
 
     def read_secret(name: str):
-        if st is None:
-            return None
-        try:
-            value = st.secrets.get(name)
-        except Exception:
-            value = None
+        if st is not None:
+            try:
+                value = st.secrets.get(name)
+            except Exception:
+                value = None
+            if value is not None:
+                return normalize(value)
+        value = local_secrets.get(name)
         return normalize(value)
 
     def read_value(*names):
