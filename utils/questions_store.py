@@ -29,18 +29,24 @@ def _get_supabase_config():
                 value = None
         return value
 
-    url = os.getenv("SUPABASE_URL") or read_secret("SUPABASE_URL")
-    key = (
-        os.getenv("SUPABASE_ANON_KEY")
-        or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        or read_secret("SUPABASE_ANON_KEY")
-        or read_secret("SUPABASE_SERVICE_ROLE_KEY")
-    )
-    table = (
-        os.getenv("SUPABASE_QUESTIONS_TABLE")
-        or read_secret("SUPABASE_QUESTIONS_TABLE")
-        or "questions"
-    )
+    def read_value(*names):
+        for name in names:
+            value = os.getenv(name)
+            if value:
+                return value
+            value = read_secret(name)
+            if value:
+                return value
+        return None
+
+    url = read_value("SUPABASE_URL")
+    key = read_value("SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY")
+    table = read_value("SUPABASE_QUESTIONS_TABLE") or "questions"
+
+    if isinstance(url, str):
+        url = url.strip().rstrip("/")
+        if url.endswith("/rest/v1"):
+            url = url[:-len("/rest/v1")]
     return url, key, table
 
 
@@ -71,8 +77,11 @@ def _load_from_supabase():
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
         }
+        base_url = url.rstrip("/")
+        if not base_url.endswith("/rest/v1"):
+            base_url = f"{base_url}/rest/v1"
         response = requests.get(
-            f"{url}/rest/v1/{table}?select=field,subject,teacher,year,question_text,question_link,upload_time,uploader_id",
+            f"{base_url}/{table}?select=field,subject,teacher,year,question_text,question_link,upload_time,uploader_id",
             headers=headers,
             timeout=10,
         )
