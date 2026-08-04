@@ -57,6 +57,17 @@ class QuestionsStoreTests(unittest.TestCase):
         self.assertEqual(questions["民法::債法::王老師::112-1"]["question_text"], "請問這是什麼？")
         self.assertIn("select=*", mock_get.call_args.args[0])
 
+    def test_returns_clear_error_when_supabase_has_no_rows(self):
+        response = Mock()
+        response.status_code = 200
+        response.json.return_value = []
+
+        with patch("utils.questions_store._get_supabase_config", return_value=("https://example.supabase.co", "test-key", "subject_and_url")), patch("utils.questions_store.requests.get", return_value=response):
+            questions, error = questions_store._load_from_supabase()
+
+        self.assertEqual(questions, {})
+        self.assertIn("沒有任何資料", error)
+
 
 if __name__ == "__main__":
     unittest.main()

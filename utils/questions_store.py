@@ -149,6 +149,9 @@ def _load_from_supabase():
     except Exception as exc:
         return {}, f"Supabase 連線異常：{exc}"
 
+    if not rows:
+        return {}, "Supabase 查詢成功，但目前表格沒有任何資料。請先在 Supabase 中新增題目資料，或確認 RLS / 權限設定。"
+
     questions: dict[str, dict[str, Any]] = {}
     for row in rows:
         field = row.get("field") or row.get("Field") or row.get("law_field") or row.get("category") or ""
