@@ -8,7 +8,7 @@ if str(_ROOT) not in sys.path:
 import streamlit as st
 
 from utils.answers_store import format_label, is_unlocked, load_answers, make_unlock_id, normalize_meta
-from utils.questions_store import get_question
+from utils.questions_store import get_question, load_questions_with_status
 from utils.session import restore_login
 from utils.users_store import load_users
 from utils.taxonomy import (
@@ -157,15 +157,18 @@ year_value = build_year_value(
 
 st.markdown("---")
 st.subheader("題目（公開）")
-question = get_question(
-    field_filter, subject_filter, teacher_filter, year_value
+questions, status_error = load_questions_with_status()
+question = questions.get(
+    f"{field_filter}::{subject_filter}::{teacher_filter}::{year_value}"
 )
+if status_error:
+    st.warning(status_error)
 if question:
     if question.get("question_text"):
         st.markdown(question["question_text"])
     if question.get("question_link"):
         st.link_button("開啟題目連結", question["question_link"])
-else:
+elif not status_error:
     st.caption("此分類尚無題目")
 
 st.markdown("---")

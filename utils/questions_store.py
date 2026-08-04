@@ -20,21 +20,50 @@ def _get_supabase_config():
     except Exception:
         st = None
 
-    url = os.getenv("SUPABASE_URL") or (st.secrets.get("SUPABASE_URL") if st else None)
+    def read_secret(name: str):
+        value = None
+        if st is not None:
+            try:
+                value = st.secrets.get(name)
+            except Exception:
+                value = None
+        return value
+
+    url = os.getenv("SUPABASE_URL") or read_secret("SUPABASE_URL")
     key = (
         os.getenv("SUPABASE_ANON_KEY")
         or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-        or (st.secrets.get("SUPABASE_ANON_KEY") if st else None)
-        or (st.secrets.get("SUPABASE_SERVICE_ROLE_KEY") if st else None)
+        or read_secret("SUPABASE_ANON_KEY")
+        or read_secret("SUPABASE_SERVICE_ROLE_KEY")
     )
-    table = os.getenv("SUPABASE_QUESTIONS_TABLE") or (st.secrets.get("SUPABASE_QUESTIONS_TABLE") if st else None) or "questions"
+    table = (
+        os.getenv("SUPABASE_QUESTIONS_TABLE")
+        or read_secret("SUPABASE_QUESTIONS_TABLE")
+        or "questions"
+    )
     return url, key, table
 
 
-def _load_from_supabase() -> dict[str, dict[str, Any]]:
+def _format_supabase_error(response, fallback: str = "") -> str:
+    if response is None:
+        return fallback or "Supabase 請求失敗"
+    try:
+        body = response.text
+    except Exception:
+        body = ""
+    if response.status_code == 401:
+        return "Supabase 驗證失敗：請確認 anon key 或 service role key 是否正確，且 RLS 政策是否允許讀取。"
+    if response.status_code == 403:
+        return "Supabase 權限不足：請確認 RLS 政策或使用 service role key。"
+    if response.status_code == 404:
+        return "Supabase 找不到指定表格：請確認 SUPABASE_QUESTIONS_TABLE 是否正確。"
+    return f"Supabase 讀取失敗（HTTP {response.status_code}）：{body or fallback}".strip()
+
+
+def _load_from_supabase():
     url, key, table = _get_supabase_config()
     if not url or not key:
-        return {}
+        return {}, "Supabase 未設定：請在 Secrets 或環境變數中填入 SUPABASE_URL、SUPABASE_ANON_KEY 與 SUPABASE_QUESTIONS_TABLE。"
 
     try:
         headers = {
@@ -48,10 +77,10 @@ def _load_from_supabase() -> dict[str, dict[str, Any]]:
             timeout=10,
         )
         if response.status_code != 200:
-            return {}
+            return {}, _format_supabase_error(response)
         rows = response.json() or []
-    except Exception:
-        return {}
+    except Exception as exc:
+        return {}, f"Supabase 連線異常：{exc}"
 
     questions: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -59,27 +88,32 @@ def _load_from_supabase() -> dict[str, dict[str, Any]]:
             continue
         combo = combo_key(row["field"], row["subject"], row["teacher"], row["year"])
         questions[combo] = {
-            "question_text": row.get("question_text") or row.get("title") or "",
-            "question_link": row.get("question_link") or row.get("link") or row.get("url") or "",
+            "question_text": row.get("question_text") or row.get("question") or row.get("title") or "",
+            "question_link": row.get("question_link") or row.get("link") or row.get("url") or row.get("question_url") or "",
             "upload_time": row.get("upload_time") or "",
             "uploader_id": row.get("uploader_id") or "",
         }
-    return questions
+    return questions, None
 
 
 def load_questions() -> dict:
-    supabase_questions = _load_from_supabase()
-    if supabase_questions:
-        return supabase_questions
+    questions, _ = _load_from_supabase()
+    return questions
 
-    if not os.path.exists(QUESTIONS_FILE):
-        return {}
-    with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+
+def load_questions_with_status():
+    questions, error = _load_from_supabase()
+    if questions or error is None:
+        return questions, error
+
+    if os.path.exists(QUESTIONS_FILE):
+        with open(QUESTIONS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f), error
+    return {}, error
 
 
 def get_question(field: str, subject: str, teacher: str, year: str):
-    questions = load_questions()
+    questions, _ = load_questions_with_status()
     return questions.get(combo_key(field, subject, teacher, year))
 
 
