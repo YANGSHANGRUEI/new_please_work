@@ -137,14 +137,20 @@ def _load_from_supabase():
                 or row.get("question")
                 or row.get("title")
                 or row.get("questionTitle")
+                or row.get("QuestionText")
+                or row.get("content")
+                or row.get("description")
                 or ""
             ),
             "question_link": (
                 row.get("question_link")
                 or row.get("link")
                 or row.get("url")
+                or row.get("URL")
                 or row.get("question_url")
+                or row.get("questionUrl")
                 or row.get("questionLink")
+                or row.get("QuestionURL")
                 or ""
             ),
             "upload_time": row.get("upload_time") or row.get("created_at") or "",
