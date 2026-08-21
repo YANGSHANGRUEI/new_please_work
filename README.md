@@ -5,6 +5,7 @@
 ## 功能
 
 - **帳號系統**：登入／註冊合一頁；密碼 SHA-256 雜湊；註冊送 3 代幣並自動登入
+- **訪客看題目**：可用系所信箱申請短效 magic link，僅可瀏覽公開題目（不可看他人作答）
 - **導覽**：`st.navigation`；未登入僅「登入／註冊」；登入後顯示首頁與功能頁
 - **上傳作答**：依 `config/taxonomy.json` 選分類；本卷分數／等第；防重複與相似度檢查
 - **瀏覽題庫**：六欄篩選後顯示公開題目與作答；1 代幣解鎖
@@ -75,6 +76,13 @@ git push -u origin main
 
 ```toml
 SESSION_SECRET = "隨機長字串請自行產生"
+APP_BASE_URL = "https://你的-app-網址"
+GUEST_EMAIL_REGEX = "^[^@\\s]+@你的系所網域$"
+SMTP_HOST = "smtp.example.com"
+SMTP_PORT = "587"
+SMTP_USERNAME = "你的SMTP帳號"
+SMTP_PASSWORD = "你的SMTP密碼"
+SMTP_FROM_EMAIL = "noreply@example.com"
 ```
 
 5. Deploy

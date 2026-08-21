@@ -9,7 +9,7 @@ import streamlit as st
 
 from utils.answers_store import format_label, is_unlocked, load_answers, make_unlock_id, normalize_meta
 from utils.questions_store import get_question, load_questions_with_status
-from utils.session import restore_login
+from utils.session import auth_mode, restore_login
 from utils.users_store import load_users
 from utils.taxonomy import (
     build_year_value,
@@ -27,16 +27,20 @@ from utils.user_store import unlock_with_cost
 st.title("瀏覽題庫")
 
 restore_login(st)
+mode = auth_mode(st)
 
-if not st.session_state.get("logged_in"):
+if mode not in ("member", "guest"):
     st.warning("請先登入才能瀏覽")
     st.stop()
 
-users = load_users()
-
-username = st.session_state["username"]
-balance = users[username]["tokens"]
-st.metric("我的代幣", balance)
+is_member = mode == "member"
+if is_member:
+    users = load_users()
+    username = st.session_state["username"]
+    balance = users[username]["tokens"]
+    st.metric("我的代幣", balance)
+else:
+    st.info("訪客模式：你可以瀏覽公開題目，但無法查看他人作答。")
 
 taxonomy = load_taxonomy()
 
@@ -174,6 +178,10 @@ elif not status_error:
 
 st.markdown("---")
 st.subheader("作答")
+
+if not is_member:
+    st.caption("訪客模式不提供作答內容。請註冊並登入帳號後使用代幣解鎖。")
+    st.stop()
 
 filtered = [
     ans
