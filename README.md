@@ -77,7 +77,7 @@ git push -u origin main
 ```toml
 SESSION_SECRET = "隨機長字串請自行產生"
 APP_BASE_URL = "https://你的-app-網址"
-GUEST_EMAIL_REGEX = "^[^@\\s]+@你的系所網域$"
+GUEST_EMAIL_DOMAIN = "你的系所網域"
 SMTP_HOST = "smtp.example.com"
 SMTP_PORT = "587"
 SMTP_USERNAME = "你的SMTP帳號"

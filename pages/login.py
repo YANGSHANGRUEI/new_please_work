@@ -6,12 +6,26 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import hashlib
-import re
 import streamlit as st
 
 from utils.email_client import send_magic_link_email
 from utils.session import auth_mode, create_guest_magic_link, restore_login, save_login, clear_login
 from utils.users_store import load_users, save_users
+
+
+def _is_basic_email(value: str) -> bool:
+    if value.count("@") != 1:
+        return False
+    local, domain = value.split("@", 1)
+    if not local or not domain:
+        return False
+    if any(ch.isspace() for ch in value):
+        return False
+    if "." not in domain:
+        return False
+    if domain.startswith(".") or domain.endswith("."):
+        return False
+    return True
 
 
 st.title("登入／註冊")
@@ -45,13 +59,15 @@ else:
     with tab_guest:
         st.caption("輸入本系信箱，系統會寄送短效登入連結（僅可瀏覽公開題目）。")
         guest_email = st.text_input("系所信箱", key="guest_email")
-        email_pattern = st.secrets.get("GUEST_EMAIL_REGEX") or r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+        email_domain = (st.secrets.get("GUEST_EMAIL_DOMAIN") or "").strip().lower()
         if st.button("寄送訪客連結", key="guest_send_link"):
             normalized = guest_email.strip().lower()
             if not normalized:
                 st.warning("請輸入信箱")
-            elif not re.fullmatch(email_pattern, normalized):
+            elif not _is_basic_email(normalized):
                 st.warning("信箱格式不符合規定")
+            elif email_domain and not normalized.endswith(f"@{email_domain}"):
+                st.warning("信箱網域不符合規定")
             else:
                 try:
                     link = create_guest_magic_link(st, email=normalized)
