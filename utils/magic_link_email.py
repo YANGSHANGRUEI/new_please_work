@@ -53,6 +53,15 @@ def _lookup_secret_bool(st, key: str, default: bool) -> bool:
     return bool(default)
 
 
+def smtp_presence_map(st) -> dict:
+    keys = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM", "SMTP_USE_TLS"]
+    result = {}
+    for key in keys:
+        value = _lookup_secret(st, key, "")
+        result[key] = bool(str(value).strip())
+    return result
+
+
 def send_browse_link_email(st, recipient_email: str, link: str, ttl_minutes: int):
     host = str(_lookup_secret(st, "SMTP_HOST", "")).strip()
     try:

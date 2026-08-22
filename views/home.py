@@ -9,7 +9,11 @@ if str(_ROOT) not in sys.path:
 import streamlit as st
 
 from utils.auth_ui import render_login_register
-from utils.magic_link_email import is_valid_ntu_student_email, send_browse_link_email
+from utils.magic_link_email import (
+    is_valid_ntu_student_email,
+    send_browse_link_email,
+    smtp_presence_map,
+)
 from utils.session import build_browse_entry_url
 from utils.session import clear_login
 
@@ -70,6 +74,13 @@ else:
                     st.success(f"連結已寄到 {normalized_email}，請於 {ttl_minutes} 分鐘內使用")
                 else:
                     st.error(result["message"])
+                    if result.get("code") == "smtp_not_configured":
+                        presence = smtp_presence_map(st)
+                        with st.expander("SMTP 設定診斷（不含敏感值）"):
+                            st.write("以下僅顯示欄位是否被目前執行環境讀到：")
+                            for key, exists in presence.items():
+                                st.write(f"- {key}: {'OK' if exists else 'MISSING'}")
+                            st.caption("若全部顯示 MISSING，通常是雲端 App Secrets 尚未成功儲存或你目前開的是另一個 App。")
                     allow_debug_link = bool(st.secrets.get("ALLOW_DEBUG_MAGIC_LINK", True))
                     if allow_debug_link:
                         st.info("目前為除錯模式，請直接使用下列連結測試：")
