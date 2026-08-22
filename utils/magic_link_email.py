@@ -15,13 +15,56 @@ def is_valid_ntu_student_email(email: str) -> bool:
     return bool(_NTU_STUDENT_EMAIL_RE.match(email.strip().lower()))
 
 
+def _lookup_secret(st, key: str, default=""):
+    # 1) Exact top-level key, e.g. SMTP_HOST
+    value = st.secrets.get(key)
+    if value not in (None, ""):
+        return value
+
+    # 2) Common lowercase top-level key, e.g. smtp_host
+    lower_key = key.lower()
+    value = st.secrets.get(lower_key)
+    if value not in (None, ""):
+        return value
+
+    # 3) Nested style, e.g. [smtp] host = "..."
+    smtp_section = st.secrets.get("smtp") or st.secrets.get("SMTP")
+    if smtp_section:
+        short_key = lower_key.replace("smtp_", "", 1)
+        value = smtp_section.get(short_key)
+        if value not in (None, ""):
+            return value
+        value = smtp_section.get(key)
+        if value not in (None, ""):
+            return value
+
+    return default
+
+
+def _lookup_secret_bool(st, key: str, default: bool) -> bool:
+    raw = _lookup_secret(st, key, default)
+    if isinstance(raw, bool):
+        return raw
+    text = str(raw).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return bool(default)
+
+
 def send_browse_link_email(st, recipient_email: str, link: str, ttl_minutes: int):
-    host = str(st.secrets.get("SMTP_HOST", "")).strip()
-    port = int(st.secrets.get("SMTP_PORT", 587))
-    username = str(st.secrets.get("SMTP_USER", "")).strip()
-    password = str(st.secrets.get("SMTP_PASSWORD", "")).strip()
+    host = str(_lookup_secret(st, "SMTP_HOST", "")).strip()
+    try:
+        port = int(_lookup_secret(st, "SMTP_PORT", 587))
+    except Exception:
+        port = 587
+    username = str(_lookup_secret(st, "SMTP_USER", "")).strip()
+    password = str(_lookup_secret(st, "SMTP_PASSWORD", "")).strip()
     sender = str(st.secrets.get("SMTP_FROM", username)).strip()
-    use_tls = bool(st.secrets.get("SMTP_USE_TLS", True))
+    if not sender:
+        sender = str(_lookup_secret(st, "SMTP_FROM", username)).strip()
+    use_tls = _lookup_secret_bool(st, "SMTP_USE_TLS", True)
 
     missing = []
     if not host:
