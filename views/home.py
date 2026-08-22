@@ -9,7 +9,7 @@ if str(_ROOT) not in sys.path:
 import streamlit as st
 
 from utils.auth_ui import render_login_register
-from utils.magic_link_email import is_valid_email, send_browse_link_email
+from utils.magic_link_email import is_valid_ntu_student_email, send_browse_link_email
 from utils.session import build_browse_entry_url
 from utils.session import clear_login
 
@@ -50,13 +50,13 @@ if st.session_state.get("logged_in"):
     st.markdown("請用左側 **功能** 選單進入上傳、瀏覽或個人頁面。")
 else:
     st.subheader("看考古題（免註冊）")
-    st.caption("輸入信箱後，系統會寄送一組只能使用一次、3 分鐘內有效的連結供你瀏覽考古題。")
+    st.caption("僅接受 NTU 學號信箱：前九碼需符合 bxxa01yzz（第七碼 y 需為 1/2/3，x/z 為 1-9），後綴 @ntu.edu.tw。")
     browse_email = st.text_input("信箱", key="browse_email_input", placeholder="you@example.com")
 
     if st.button("寄送限時連結", key="send_browse_link"):
         normalized_email = browse_email.strip().lower()
-        if not is_valid_email(normalized_email):
-            st.warning("請輸入有效信箱格式")
+        if not is_valid_ntu_student_email(normalized_email):
+            st.warning("信箱格式不符。請使用符合 bxxa01yzz@ntu.edu.tw 的 NTU 學號信箱（y=1/2/3，x/z=1-9）。")
         else:
             base_url = _resolve_magic_link_base_url(st)
             if not base_url:
