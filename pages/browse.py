@@ -6,6 +6,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 import streamlit as st
+from datetime import datetime
 
 from utils.answers_store import format_label, is_unlocked, load_answers, make_unlock_id, normalize_meta
 from utils.questions_store import get_question, load_questions_with_status
@@ -28,15 +29,28 @@ st.title("瀏覽題庫")
 
 restore_login(st)
 
-if not st.session_state.get("logged_in"):
-    st.warning("請先登入才能瀏覽")
+logged_in = bool(st.session_state.get("logged_in"))
+browse_access = bool(st.session_state.get("browse_access"))
+
+if not logged_in and not browse_access:
+    st.warning("請先使用信箱限時連結或登入後才能瀏覽")
     st.stop()
 
-users = load_users()
+users = load_users() if logged_in else {}
 
-username = st.session_state["username"]
-balance = users[username]["tokens"]
-st.metric("我的代幣", balance)
+username = st.session_state.get("username")
+if logged_in and username:
+    balance = users[username]["tokens"]
+    st.metric("我的代幣", balance)
+else:
+    exp_ts = st.session_state.get("browse_exp")
+    exp_str = ""
+    if exp_ts:
+        exp_str = datetime.fromtimestamp(int(exp_ts)).strftime("%Y-%m-%d %H:%M:%S")
+    st.info("目前為限時瀏覽模式（免註冊）")
+    if exp_str:
+        st.caption(f"驗證信箱：{st.session_state.get('browse_email')}｜有效至：{exp_str}")
+    st.caption("若要解鎖查看作答內容，請註冊並登入參與代幣系統。")
 
 taxonomy = load_taxonomy()
 
@@ -204,14 +218,17 @@ for i, ans in enumerate(filtered, 1):
         st.markdown("---")
         continue
 
-    if is_unlocked(ans, users[username]["unlocked"]):
+    if logged_in and is_unlocked(ans, users[username]["unlocked"]):
         st.write(ans["answer_text"])
     else:
-        st.write("作答內容已鎖定，需 1 代幣解鎖")
-        if st.button("1 代幣解鎖", key=f"unlock_{ans['upload_time']}_{i}"):
-            ok, _ = unlock_with_cost(username, unlock_id, cost=1)
-            if not ok:
-                st.error("代幣不足")
-            else:
-                st.rerun()
+        if not logged_in:
+            st.write("作答內容已鎖定，登入後可用 1 代幣解鎖")
+        else:
+            st.write("作答內容已鎖定，需 1 代幣解鎖")
+            if st.button("1 代幣解鎖", key=f"unlock_{ans['upload_time']}_{i}"):
+                ok, _ = unlock_with_cost(username, unlock_id, cost=1)
+                if not ok:
+                    st.error("代幣不足")
+                else:
+                    st.rerun()
     st.markdown("---")

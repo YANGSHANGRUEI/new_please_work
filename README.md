@@ -4,8 +4,9 @@
 
 ## 功能
 
-- **帳號系統**：登入／註冊合一頁；密碼 SHA-256 雜湊；註冊送 3 代幣並自動登入
-- **導覽**：`st.navigation`；未登入僅「登入／註冊」；登入後顯示首頁與功能頁
+- **考古題瀏覽（免註冊）**：首頁輸入信箱寄送限時連結，可進入瀏覽題庫看公開題目
+- **帳號系統（代幣功能）**：登入／註冊合一頁；密碼 SHA-256 雜湊；註冊送 3 代幣並自動登入
+- **導覽**：未登入預設首頁（含信箱入口 + 登入註冊區）；登入後顯示完整功能頁
 - **上傳作答**：依 `config/taxonomy.json` 選分類；本卷分數／等第；防重複與相似度檢查
 - **瀏覽題庫**：六欄篩選後顯示公開題目與作答；1 代幣解鎖
 - **個人頁面**：代幣、上傳筆數、已解鎖清單
@@ -74,7 +75,22 @@ git push -u origin main
 4. **Secrets**（Settings → Secrets）加入：
 
 ```toml
-SESSION_SECRET = "隨機長字串請自行產生"
+APP_SESSION_SECRET = "隨機長字串請自行產生"
+APP_BASE_URL = "https://你的-app-網址"
+
+# 考古題限時連結（秒）
+BROWSE_LINK_TTL_SEC = 1800
+
+# SMTP 寄信設定
+SMTP_HOST = "smtp.example.com"
+SMTP_PORT = 587
+SMTP_USER = "no-reply@example.com"
+SMTP_PASSWORD = "你的密碼或應用程式密碼"
+SMTP_FROM = "法律申論題平台 <no-reply@example.com>"
+SMTP_USE_TLS = true
+
+# 若 SMTP 尚未設定，可暫時開除錯顯示連結
+ALLOW_DEBUG_MAGIC_LINK = true
 ```
 
 5. Deploy
@@ -112,7 +128,7 @@ STREAMLIT_APP_URL = https://你的-app-網址
 ## 安全注意事項
 
 - `data/` 勿 commit
-- 上線務必設定 `SESSION_SECRET`（見 `.streamlit/secrets.toml.example`）
+- 上線務必設定 `APP_SESSION_SECRET`（見 `.streamlit/secrets.toml.example`）
 - 登入錯誤訊息不區分帳號／密碼
 
 ## 驗收

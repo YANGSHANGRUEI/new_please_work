@@ -7,12 +7,17 @@ browse_page = st.Page("pages/browse.py", title="瀏覽題庫")
 profile_page = st.Page("pages/profile.py", title="個人頁面")
 
 
-def build_pages(logged_in: bool) -> dict:
+def build_pages(logged_in: bool, browse_access: bool = False) -> dict:
     if logged_in:
         return {
             "": [st.Page("views/home.py", title="首頁", default=True)],
             "功能": [upload_page, browse_page, profile_page],
         }
+    if browse_access:
+        return {
+            "": [st.Page("pages/browse.py", title="瀏覽題庫", default=True)],
+            "功能": [home_page],
+        }
     return {
-        "": [st.Page("pages/login.py", title="登入／註冊", default=True)],
+        "": [st.Page("views/home.py", title="首頁", default=True)],
     }

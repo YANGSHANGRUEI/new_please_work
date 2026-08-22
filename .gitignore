@@ -2,3 +2,6 @@ apikey
 .streamlit/secrets.toml
 .venv
 .vscode
+__pycache__/
+*.pyc
+data/consumed_browse_tokens.json
