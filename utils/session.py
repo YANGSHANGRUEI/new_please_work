@@ -8,8 +8,6 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
-from utils.users_store import load_users
-
 _AUTH_QUERY_KEY = "auth"
 _BROWSE_QUERY_KEY = "browse"
 _TOKEN_TTL_SEC = 60 * 60 * 24 * 7  # 7 days
@@ -214,7 +212,13 @@ def restore_login(st):
         _clear_query_auth(st)
         return
 
-    users = load_users()
+    try:
+        from utils.users_store import load_users
+
+        users = load_users()
+    except Exception:
+        # Keep app booting even if user storage backend is temporarily unavailable.
+        return
     username = parsed["username"]
     if username not in users:
         _clear_query_auth(st)
